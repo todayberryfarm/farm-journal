@@ -216,7 +216,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-08-23-18 (구글 로그인·서버 잠금 적용)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-11-1 (음성인식 보정 정확도 강화·연도인식 버그 수정)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -763,7 +763,7 @@ function findBestTermMatch(token, terms) {
     if (dist < bestDist) { bestDist = dist; best = term; }
   }
   if (!best) return null;
-  const threshold = Math.max(1, Math.ceil(decomposeHangul(best).length * 0.3));
+  const threshold = Math.max(1, Math.floor(decomposeHangul(best).length / 5));
   return bestDist <= threshold ? best : null;
 }
 // 단어 하나씩 비교해서는 못 잡는, 통째로 다르게 들리는 문구들 (신고받은 사례 계속 추가)
@@ -823,6 +823,9 @@ function parseDateAndClean(text) {
     cleaned = text.replace(m[0], '');
   } else if (m = text.match(/어제/)) {
     date = fmtDate(addDays(today,-1));
+    cleaned = text.replace(m[0], '');
+  } else if (m = text.match(/(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/)) {
+    date = fmtDate(new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10)));
     cleaned = text.replace(m[0], '');
   } else if (m = text.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/)) {
     date = fmtDate(new Date(today.getFullYear(), parseInt(m[1],10)-1, parseInt(m[2],10)));
