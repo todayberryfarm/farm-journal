@@ -216,7 +216,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-11-1 (음성인식 보정 정확도 강화·연도인식 버그 수정)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-12-1 (날짜 낱말 오인식 버그 수정 — '오늘땄데이' 등)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -818,25 +818,33 @@ function parseDateAndClean(text) {
   const today = new Date();
   let date, cleaned = text;
   let m;
-  if (m = text.match(/그저께|그제/)) {
+  let removedDate = false;
+  if (m = text.match(/(?<![가-힣])(그저께|그제)(?![가-힣])/)) {
     date = fmtDate(addDays(today,-2));
     cleaned = text.replace(m[0], '');
-  } else if (m = text.match(/어제/)) {
+    removedDate = true;
+  } else if (m = text.match(/(?<![가-힣])어제(?![가-힣])/)) {
     date = fmtDate(addDays(today,-1));
     cleaned = text.replace(m[0], '');
+    removedDate = true;
   } else if (m = text.match(/(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/)) {
     date = fmtDate(new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10)));
     cleaned = text.replace(m[0], '');
+    removedDate = true;
   } else if (m = text.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/)) {
     date = fmtDate(new Date(today.getFullYear(), parseInt(m[1],10)-1, parseInt(m[2],10)));
     cleaned = text.replace(m[0], '');
-  } else if (m = text.match(/오늘/)) {
+    removedDate = true;
+  } else if (m = text.match(/(?<![가-힣])오늘(?![가-힣])/)) {
     date = fmtDate(today);
     cleaned = text.replace(m[0], '');
+    removedDate = true;
   } else {
     date = fmtDate(today);
   }
-  cleaned = cleaned.replace(/^\s*(에는|엔|에|도|는|은)?\s*/, '').trim().replace(/\s{2,}/g, ' ');
+  // 날짜를 실제로 지웠을 때만 앞에 남은 조사를 정리 (아니면 '은박지' 같은 낱말이 잘못 잘림)
+  if (removedDate) cleaned = cleaned.replace(/^\s*(에는|엔|에|도|는|은)?\s*/, '');
+  cleaned = cleaned.trim().replace(/\s{2,}/g, ' ');
   return { date, cleanText: cleaned || text.trim() };
 }
 
