@@ -216,7 +216,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-12-1 (날짜 낱말 오인식 버그 수정 — '오늘땄데이' 등)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-1 (구글드라이브 자동백업 추가)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -2163,6 +2163,23 @@ async function uploadBackupToDrive(filename, jsonText) {
 $('gdrive-connect-btn').addEventListener('click', connectGoogleDrive);
 $('gdrive-disconnect-btn').addEventListener('click', disconnectGoogleDrive);
 window.addEventListener('load', initGoogleDrive);
+// ---------- 앱을 열 때마다 확인해서, 마지막 드라이브 백업이 하루 넘었으면 조용히 자동으로 올림 ----------
+async function autoBackupToDriveIfDue() {
+  try {
+    if (localStorage.getItem(GDRIVE_CONNECTED_KEY) !== '1') return;
+    if (!entries || entries.length === 0) return;
+    const dayMs = 24 * 60 * 60 * 1000;
+    if (backupMeta.lastDriveBackupAt && (Date.now() - backupMeta.lastDriveBackupAt) < dayMs) return;
+    const jsonText = JSON.stringify(buildBackupPayload(), null, 2);
+    const filename = `농장일지_자동백업_${fmtDate(new Date())}.json`;
+    const ok = await uploadBackupToDrive(filename, jsonText);
+    if (ok) {
+      backupMeta.lastDriveBackupAt = Date.now();
+      await saveBackupMeta();
+      showToast('☁️ 구글 드라이브에 자동으로 백업했어요.');
+    }
+  } catch (e) {}
+}
 function updateBackupReminder() {
   const banner = $('backup-reminder-banner');
   const daysSince = backupMeta.lastBackupAt ? Math.floor((Date.now() - backupMeta.lastBackupAt) / (24*60*60*1000)) : null;
@@ -2310,7 +2327,7 @@ function startApp() {
   if ($('account-status')) $('account-status').textContent = sbSession && sbSession.email ? `${sbSession.email}로 로그인 중` : '';
   const entriesLoadedPromise = loadEntries();
   const pestLoadedPromise = loadPestRecords();
-  entriesLoadedPromise.then(async () => { await loadBackupMeta(); updateBackupReminder(); });
+  entriesLoadedPromise.then(async () => { await loadBackupMeta(); updateBackupReminder(); setTimeout(() => autoBackupToDriveIfDue(), 1500); });
   Promise.all([entriesLoadedPromise, pestLoadedPromise]).then(() => renderOutlook());
   loadVocab();
   loadCustomTypes().then(renderTypeChipsAndFilter);
