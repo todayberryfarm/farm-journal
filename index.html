@@ -216,7 +216,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-1 (구글드라이브 자동백업 추가)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-2 (15일 후 예상 현상 창을 ±3일→±15일로 확대)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -1315,8 +1315,8 @@ const PREDICT_PHENOMENA = [
 function getHistoricalOutlook() {
   const target = addDays(new Date(), 15);
   const lastYearCenter = addDays(target, -365);
-  const windowStart = fmtDate(addDays(lastYearCenter, -3));
-  const windowEnd = fmtDate(addDays(lastYearCenter, 3));
+  const windowStart = fmtDate(addDays(lastYearCenter, -15));
+  const windowEnd = fmtDate(addDays(lastYearCenter, 15));
   const inWindow = d => d >= windowStart && d <= windowEnd;
 
   const hits = [];
