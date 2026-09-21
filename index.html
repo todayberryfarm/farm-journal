@@ -221,7 +221,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-4 (달력 범위를 오늘~30일로 통일, 날짜 클릭시 기록 표시)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-5 (기간 평균기온·데이터관리 접기·날짜검색·날씨수정 추가)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -262,11 +262,13 @@
     </div>
   </div>
 
-  <div class="filter-bar" style="display:flex; gap:0.5rem;">
-    <input type="text" id="search-input" placeholder="검색 (예: 방제, 4구역)" style="flex:1; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.55rem 0.7rem; font-size:0.86rem; font-family:inherit;">
+  <div class="filter-bar" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+    <input type="text" id="search-input" placeholder="검색 (예: 방제, 4구역)" style="flex:1; min-width:120px; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.55rem 0.7rem; font-size:0.86rem; font-family:inherit;">
+    <input type="date" id="search-date" style="flex:0 0 auto; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.55rem 0.5rem; font-size:0.86rem; font-family:inherit;">
     <select id="filter-type" style="flex:0 0 auto; max-width:38%;"><option value="전체">전체 작업유형</option></select>
   </div>
-  <div style="text-align:right; margin:-0.6rem 0 0.8rem;">
+  <div style="text-align:right; margin:-0.6rem 0 0.8rem; display:flex; justify-content:flex-end; gap:0.8rem;">
+    <button type="button" id="search-date-clear-btn" style="border:none; background:none; color:var(--ink-soft); font-size:0.78rem; font-weight:700; cursor:pointer; text-decoration:underline; font-family:inherit; display:none;">📅 날짜 검색 지우기</button>
     <button type="button" id="type-manage-btn" style="border:none; background:none; color:var(--leaf); font-size:0.78rem; font-weight:700; cursor:pointer; text-decoration:underline; font-family:inherit;">🏷️ 작업유형 관리</button>
   </div>
 
@@ -292,7 +294,20 @@
       </div>
     </div>
     <div class="stat-section">
-      <h2>데이터 관리</h2>
+      <h2>기간별 일평균 기온</h2>
+      <div class="stat-card-box">
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+          <input type="date" id="temp-period-start" style="flex:1; min-width:120px; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.5rem 0.6rem; font-size:0.85rem; font-family:inherit;">
+          <span style="color:var(--ink-soft); font-size:0.82rem;">~</span>
+          <input type="date" id="temp-period-end" style="flex:1; min-width:120px; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.5rem 0.6rem; font-size:0.85rem; font-family:inherit;">
+          <button type="button" id="temp-period-go" style="border:none; background:var(--leaf); color:#fff; border-radius:8px; padding:0.5rem 1rem; font-weight:700; font-size:0.85rem; cursor:pointer; font-family:inherit;">조회</button>
+        </div>
+        <div id="temp-period-result" style="margin-top:0.8rem;"></div>
+      </div>
+    </div>
+    <div class="stat-section">
+      <h2 style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;" id="data-mgmt-toggle">데이터 관리 <span id="data-mgmt-arrow" style="font-size:0.8rem; color:var(--ink-soft);">▾ 펼치기</span></h2>
+      <div id="data-mgmt-body" style="display:none;">
       <div class="data-mgmt-box">
         <div class="data-mgmt-title">💾 내 기기에 백업 저장 / 불러오기</div>
         <div class="data-mgmt-status">인터넷 연결 없이 이 기기 안에서 바로 저장·복원돼요. <b>버전이 바뀌어 새 링크로 게시될 때마다 데이터가 새로 시작되니</b>, 그때마다 백업 저장 → 새 링크에서 불러오기를 해주세요.</div>
@@ -332,6 +347,7 @@
         <div class="data-mgmt-status">기상자료개방포털(data.kma.go.kr)의 "기온분석" CSV 파일을 그대로 올리면 돼요.</div>
         <input type="file" accept=".csv,text/csv" id="weather-csv-input" style="margin-top:0.6rem;">
         <div class="data-mgmt-status" id="weather-csv-status"></div>
+      </div>
       </div>
     </div>
   </div>
@@ -455,6 +471,36 @@
     <div class="confirm-btns">
       <button class="btn-cancel" id="pest-add-cancel">취소</button>
       <button class="btn-save" id="pest-add-save">기록 저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="wx-edit-overlay">
+  <div class="confirm-card">
+    <h3>🌤️ 날씨 수정</h3>
+    <div class="voice-hint" id="wx-edit-date-label" style="text-align:left;"></div>
+    <div class="cf-row">
+      <label class="field-label">날씨</label>
+      <div class="type-chip-group" id="wx-edit-condition-group">
+        <button type="button" class="type-chip" data-c="맑음">☀️ 맑음</button>
+        <button type="button" class="type-chip" data-c="흐림">⛅ 흐림</button>
+        <button type="button" class="type-chip" data-c="비">🌧️ 비</button>
+        <button type="button" class="type-chip" data-c="눈">❄️ 눈</button>
+      </div>
+    </div>
+    <div class="cf-row" style="display:flex; gap:0.6rem;">
+      <div style="flex:1;">
+        <label class="field-label">최고기온(°)</label>
+        <input type="number" id="wx-edit-max" placeholder="예: 28">
+      </div>
+      <div style="flex:1;">
+        <label class="field-label">최저기온(°)</label>
+        <input type="number" id="wx-edit-min" placeholder="예: 20">
+      </div>
+    </div>
+    <div class="confirm-btns">
+      <button class="btn-cancel" id="wx-edit-cancel">취소</button>
+      <button class="btn-save" id="wx-edit-save">수정 저장</button>
     </div>
   </div>
 </div>
@@ -1030,6 +1076,52 @@ function switchTab(name) {
 }
 $('filter-type').addEventListener('change', render);
 $('search-input').addEventListener('input', render);
+$('search-date').addEventListener('change', render);
+$('search-date-clear-btn').addEventListener('click', () => { $('search-date').value = ''; render(); });
+$('data-mgmt-toggle').addEventListener('click', () => {
+  const body = $('data-mgmt-body');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  $('data-mgmt-arrow').textContent = open ? '▾ 펼치기' : '▴ 접기';
+});
+function computePeriodAvgTemp(start, end) {
+  let sumMean = 0, sumMax = 0, sumMin = 0, countMean = 0, countMax = 0, countMin = 0, days = 0;
+  let d = start;
+  while (d <= end) {
+    const w = weatherMap[d];
+    if (w) {
+      if (w.mean !== null && w.mean !== undefined) { sumMean += w.mean; countMean++; }
+      if (w.max !== null && w.max !== undefined) { sumMax += w.max; countMax++; }
+      if (w.min !== null && w.min !== undefined) { sumMin += w.min; countMin++; }
+      days++;
+    }
+    d = fmtDate(addDays(new Date(d), 1));
+  }
+  return {
+    avgMean: countMean ? sumMean / countMean : null,
+    avgMax: countMax ? sumMax / countMax : null,
+    avgMin: countMin ? sumMin / countMin : null,
+    days
+  };
+}
+$('temp-period-go').addEventListener('click', () => {
+  const start = $('temp-period-start').value;
+  const end = $('temp-period-end').value;
+  const box = $('temp-period-result');
+  if (!start || !end) { box.innerHTML = '<div class="empty">시작일과 종료일을 선택해 주세요.</div>'; return; }
+  if (start > end) { box.innerHTML = '<div class="empty">시작일이 종료일보다 늦어요.</div>'; return; }
+  const { avgMean, avgMax, avgMin, days } = computePeriodAvgTemp(start, end);
+  if (days === 0) { box.innerHTML = '<div class="empty">이 기간엔 저장된 날씨 기록이 없어요.</div>'; return; }
+  const fmt1 = v => v === null ? '-' : (Math.round(v * 10) / 10) + '°';
+  box.innerHTML = `
+    <div class="temp-summary">
+      <div class="temp-sum-card cur"><div>일평균</div><b>${fmt1(avgMean)}</b></div>
+      <div class="temp-sum-card last"><div>평균 최고</div><b>${fmt1(avgMax)}</b></div>
+      <div class="temp-sum-card last"><div>평균 최저</div><b>${fmt1(avgMin)}</b></div>
+    </div>
+    <div class="data-mgmt-status" style="margin-top:0.6rem;">날씨 기록이 있는 날 ${days}일 기준으로 계산했어요.</div>
+  `;
+});
 
 // ---------- 캘린더: 오늘 기준 앞뒤 15일, 작년 이맘때 적엽/적과/방제/화방 기록 ----------
 const CAL_TYPES = ['적엽','적과','방제','1화방','2화방','3화방','4화방'];
@@ -1602,15 +1694,50 @@ function fmtDayFull(dstr) {
 }
 function wxLabel(dstr) {
   const w = weatherMap[dstr];
-  if (!w) return weatherFetchAttempted.has(dstr) ? '<span class="wx-badge pending">날씨 확인 중...</span>' : '<span class="wx-badge pending">날씨 기록 없음</span>';
+  if (!w) return weatherFetchAttempted.has(dstr) ? '<span class="wx-badge pending">날씨 확인 중...</span>' : `<span class="wx-badge pending wx-edit-trigger" data-date="${dstr}" style="cursor:pointer;">날씨 기록 없음 ✏️</span>`;
   const icon = wxIcon(w.condition);
   const parts = [];
   if (w.condition) parts.push(w.condition);
   if (w.max !== null && w.max !== undefined) parts.push(`최고 ${Math.round(w.max)}°`);
   if (w.min !== null && w.min !== undefined) parts.push(`최저 ${Math.round(w.min)}°`);
   if ((w.max === null || w.max === undefined) && (w.min === null || w.min === undefined) && w.mean !== null && w.mean !== undefined) parts.push(`${Math.round(w.mean)}°`);
-  return `<span class="wx-badge">${icon} ${parts.join(' · ')}</span>`;
+  return `<span class="wx-badge wx-edit-trigger" data-date="${dstr}" style="cursor:pointer;">${icon} ${parts.join(' · ')} ✏️</span>`;
 }
+let editingWxDate = null;
+function openWxEdit(dstr) {
+  editingWxDate = dstr;
+  const w = weatherMap[dstr] || {};
+  $('wx-edit-date-label').textContent = `${fmtDayFull(dstr)} 날씨를 실제와 다르게 자동 기록됐다면 여기서 고쳐주세요. (한번 고치면 자동으로 덮어써지지 않아요)`;
+  $('wx-edit-condition-group').querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.c === w.condition));
+  $('wx-edit-max').value = (w.max !== null && w.max !== undefined) ? w.max : '';
+  $('wx-edit-min').value = (w.min !== null && w.min !== undefined) ? w.min : '';
+  $('wx-edit-overlay').classList.add('show');
+}
+document.addEventListener('click', (e) => {
+  const trigger = e.target.closest('.wx-edit-trigger');
+  if (trigger) openWxEdit(trigger.dataset.date);
+});
+$('wx-edit-condition-group').querySelectorAll('.type-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    $('wx-edit-condition-group').querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
+});
+$('wx-edit-cancel').addEventListener('click', () => { $('wx-edit-overlay').classList.remove('show'); editingWxDate = null; });
+$('wx-edit-save').addEventListener('click', async () => {
+  if (!editingWxDate) return;
+  const activeChip = $('wx-edit-condition-group').querySelector('.type-chip.active');
+  const condition = activeChip ? activeChip.dataset.c : null;
+  const maxVal = $('wx-edit-max').value.trim() ? parseFloat($('wx-edit-max').value) : null;
+  const minVal = $('wx-edit-min').value.trim() ? parseFloat($('wx-edit-min').value) : null;
+  const mean = (maxVal !== null && minVal !== null) ? (maxVal + minVal) / 2 : (maxVal !== null ? maxVal : minVal);
+  weatherMap[editingWxDate] = { max: maxVal, min: minVal, mean, condition, auto: false, manual: true };
+  await saveWeatherMap();
+  $('wx-edit-overlay').classList.remove('show');
+  editingWxDate = null;
+  render();
+  showToast('✅ 날씨를 수정했어요. 이제 자동으로 덮어써지지 않아요.');
+});
 
 
 
@@ -1619,11 +1746,16 @@ function render() {
   const container = $('entries');
   const typeFilter = $('filter-type').value;
   const searchQ = ($('search-input') ? $('search-input').value.trim() : '');
+  const searchDate = ($('search-date') ? $('search-date').value : '');
   let filtered = typeFilter === '전체' ? entries : entries.filter(e => getTypes(e).includes(typeFilter));
   if (searchQ) {
     filtered = filtered.filter(e => (e.work || '').includes(searchQ) || (e.note || '').includes(searchQ));
   }
-  const filterActive = typeFilter !== '전체' || !!searchQ;
+  if (searchDate) {
+    filtered = filtered.filter(e => e.date === searchDate);
+  }
+  if ($('search-date-clear-btn')) $('search-date-clear-btn').style.display = searchDate ? 'inline-block' : 'none';
+  const filterActive = typeFilter !== '전체' || !!searchQ || !!searchDate;
 
   if (entries.length === 0) {
     $('status').textContent = '';
