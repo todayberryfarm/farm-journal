@@ -221,7 +221,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-6 (검색 필터 배치 정리: 날짜검색 토글 + 작업유형 칩)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-7 (검색창과 날짜검색 버튼을 하나의 박스로 통합)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -262,9 +262,9 @@
     </div>
   </div>
 
-  <div class="filter-bar" style="display:flex; gap:0.5rem;">
-    <input type="text" id="search-input" placeholder="검색 (예: 방제, 4구역)" style="flex:1; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.55rem 0.7rem; font-size:0.86rem; font-family:inherit;">
-    <button type="button" id="search-date-toggle-btn" style="flex-shrink:0; display:flex; align-items:center; gap:0.3rem; border:none; background:var(--paper); color:var(--leaf); font-size:0.8rem; font-weight:700; border-radius:8px; padding:0 0.7rem; cursor:pointer; font-family:inherit;">📅 날짜검색</button>
+  <div class="filter-bar" style="display:flex; align-items:center; gap:0.5rem; background:#fff; border:1.5px solid var(--paper-line); border-radius:8px; padding:0 0.3rem 0 0.7rem;">
+    <input type="text" id="search-input" placeholder="검색 (예: 방제, 4구역)" style="flex:1; border:none; background:none; padding:0.55rem 0; font-size:0.86rem; font-family:inherit; outline:none;">
+    <button type="button" id="search-date-toggle-btn" style="flex-shrink:0; display:flex; align-items:center; gap:0.3rem; border:none; background:var(--paper); color:var(--leaf); font-size:0.8rem; font-weight:700; border-radius:8px; padding:0.4rem 0.7rem; cursor:pointer; font-family:inherit;">📅 날짜검색</button>
   </div>
   <div id="search-date-row" style="display:none; align-items:center; gap:0.5rem; background:var(--card); border:1.5px solid var(--leaf); border-radius:8px; padding:0.5rem 0.7rem; margin-top:0.5rem;">
     <span style="font-size:0.8rem; color:var(--ink-soft); flex-shrink:0;">날짜검색:</span>
