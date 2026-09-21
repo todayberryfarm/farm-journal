@@ -83,7 +83,7 @@
   .filter-bar select { width: 100%; border: 1.5px solid var(--paper-line); border-radius: 8px; padding: 0.55rem 0.7rem; font-size: 0.86rem; font-family: inherit; background: #fff; color: var(--ink); }
   .type-tag { display: inline-block; font-size: 0.7rem; font-weight: 700; color: var(--leaf); background: rgba(76,122,93,0.12); border-radius: 999px; padding: 0.15rem 0.55rem; margin: 0 0.3rem 0.4rem 0; }
   .type-chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-  .type-chip { border: 1.5px solid var(--paper-line); background: #fff; color: var(--ink-soft); border-radius: 999px; padding: 0.35rem 0.75rem; font-size: 0.82rem; cursor: pointer; font-family: inherit; }
+  .type-chip { border: 1.5px solid var(--paper-line); background: #fff; color: var(--ink-soft); border-radius: 999px; padding: 0.35rem 0.75rem; font-size: 0.82rem; cursor: pointer; font-family: inherit; flex-shrink: 0; white-space: nowrap; }
   .type-chip.active { background: var(--leaf); border-color: var(--leaf); color: #fff; font-weight: 700; }
 
   .stat-section { margin-bottom: 1.6rem; }
@@ -221,7 +221,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-5 (기간 평균기온·데이터관리 접기·날짜검색·날씨수정 추가)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-6 (검색 필터 배치 정리: 날짜검색 토글 + 작업유형 칩)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -262,13 +262,17 @@
     </div>
   </div>
 
-  <div class="filter-bar" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-    <input type="text" id="search-input" placeholder="검색 (예: 방제, 4구역)" style="flex:1; min-width:120px; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.55rem 0.7rem; font-size:0.86rem; font-family:inherit;">
-    <input type="date" id="search-date" style="flex:0 0 auto; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.55rem 0.5rem; font-size:0.86rem; font-family:inherit;">
-    <select id="filter-type" style="flex:0 0 auto; max-width:38%;"><option value="전체">전체 작업유형</option></select>
+  <div class="filter-bar" style="display:flex; gap:0.5rem;">
+    <input type="text" id="search-input" placeholder="검색 (예: 방제, 4구역)" style="flex:1; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.55rem 0.7rem; font-size:0.86rem; font-family:inherit;">
+    <button type="button" id="search-date-toggle-btn" style="flex-shrink:0; display:flex; align-items:center; gap:0.3rem; border:none; background:var(--paper); color:var(--leaf); font-size:0.8rem; font-weight:700; border-radius:8px; padding:0 0.7rem; cursor:pointer; font-family:inherit;">📅 날짜검색</button>
   </div>
-  <div style="text-align:right; margin:-0.6rem 0 0.8rem; display:flex; justify-content:flex-end; gap:0.8rem;">
-    <button type="button" id="search-date-clear-btn" style="border:none; background:none; color:var(--ink-soft); font-size:0.78rem; font-weight:700; cursor:pointer; text-decoration:underline; font-family:inherit; display:none;">📅 날짜 검색 지우기</button>
+  <div id="search-date-row" style="display:none; align-items:center; gap:0.5rem; background:var(--card); border:1.5px solid var(--leaf); border-radius:8px; padding:0.5rem 0.7rem; margin-top:0.5rem;">
+    <span style="font-size:0.8rem; color:var(--ink-soft); flex-shrink:0;">날짜검색:</span>
+    <input type="date" id="search-date" style="flex:1; border:none; background:none; font-size:0.85rem; font-family:inherit; color:var(--ink);">
+    <button type="button" id="search-date-clear-btn" style="border:none; background:none; color:var(--ink-soft); font-size:1rem; cursor:pointer; font-family:inherit;">✕</button>
+  </div>
+  <div class="type-chip-group" id="filter-type-chips" style="margin-top:0.6rem; flex-wrap:nowrap; overflow-x:auto; padding-bottom:0.2rem;"></div>
+  <div style="text-align:right; margin:0.4rem 0 0.8rem;">
     <button type="button" id="type-manage-btn" style="border:none; background:none; color:var(--leaf); font-size:0.78rem; font-weight:700; cursor:pointer; text-decoration:underline; font-family:inherit;">🏷️ 작업유형 관리</button>
   </div>
 
@@ -1042,6 +1046,7 @@ async function applyWeatherFromEntry(date, text) {
   return true;
 }
 
+let currentTypeFilter = '전체';
 function renderTypeChipsAndFilter() {
   $('c-type-group').innerHTML = '';
   getAllWorkTypes().forEach(t => {
@@ -1050,10 +1055,18 @@ function renderTypeChipsAndFilter() {
     chip.addEventListener('click', () => chip.classList.toggle('active'));
     $('c-type-group').appendChild(chip);
   });
-  const curFilterVal = $('filter-type').value || '전체';
-  $('filter-type').innerHTML = '<option value="전체">전체 작업유형</option>';
-  getAllWorkTypes().forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; $('filter-type').appendChild(o); });
-  if ([...$('filter-type').options].some(o => o.value === curFilterVal)) $('filter-type').value = curFilterVal;
+  if (!['전체', ...getAllWorkTypes()].includes(currentTypeFilter)) currentTypeFilter = '전체';
+  $('filter-type-chips').innerHTML = '';
+  ['전체', ...getAllWorkTypes()].forEach(t => {
+    const chip = document.createElement('button');
+    chip.type = 'button'; chip.className = 'type-chip' + (t === currentTypeFilter ? ' active' : ''); chip.textContent = t; chip.dataset.type = t;
+    chip.addEventListener('click', () => {
+      currentTypeFilter = t;
+      $('filter-type-chips').querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === t));
+      render();
+    });
+    $('filter-type-chips').appendChild(chip);
+  });
 }
 renderTypeChipsAndFilter();
 function setSelectedTypes(types) {
@@ -1074,10 +1087,15 @@ function switchTab(name) {
   $('tab-compare').classList.toggle('active', !isRecord);
   if (!isRecord) { renderTempChart(); }
 }
-$('filter-type').addEventListener('change', render);
 $('search-input').addEventListener('input', render);
 $('search-date').addEventListener('change', render);
 $('search-date-clear-btn').addEventListener('click', () => { $('search-date').value = ''; render(); });
+$('search-date-toggle-btn').addEventListener('click', () => {
+  const row = $('search-date-row');
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : 'flex';
+  if (open) { $('search-date').value = ''; render(); }
+});
 $('data-mgmt-toggle').addEventListener('click', () => {
   const body = $('data-mgmt-body');
   const open = body.style.display !== 'none';
@@ -1744,7 +1762,7 @@ $('wx-edit-save').addEventListener('click', async () => {
 
 function render() {
   const container = $('entries');
-  const typeFilter = $('filter-type').value;
+  const typeFilter = currentTypeFilter;
   const searchQ = ($('search-input') ? $('search-input').value.trim() : '');
   const searchDate = ($('search-date') ? $('search-date').value : '');
   let filtered = typeFilter === '전체' ? entries : entries.filter(e => getTypes(e).includes(typeFilter));
