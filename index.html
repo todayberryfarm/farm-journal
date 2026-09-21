@@ -216,7 +216,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-2 (15일 후 예상 현상 창을 ±3일→±15일로 확대)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-3 (예상현상: 오늘~30일 범위로 변경, 안내문구 제거, 정렬 개선)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -245,8 +245,7 @@
   </div>
 
   <div class="task-section">
-    <h2 id="task-heading">🔮 15일 후 예상되는 현상</h2>
-    <div class="import-hint" style="margin-bottom:0.7rem;">작년 이맘때(같은 날짜 무렵) 기록을 바탕으로, 앞으로 15일 뒤쯤 나타날 수 있는 현상을 미리 알려드려요.</div>
+    <h2 id="task-heading">🔮 앞으로 한 달간 예상되는 현상</h2>
     <div id="task-list"></div>
   </div>
 
@@ -1313,10 +1312,9 @@ const PREDICT_PHENOMENA = [
   { label: '노균병', keywords: ['노균병'] },
 ];
 function getHistoricalOutlook() {
-  const target = addDays(new Date(), 15);
-  const lastYearCenter = addDays(target, -365);
-  const windowStart = fmtDate(addDays(lastYearCenter, -15));
-  const windowEnd = fmtDate(addDays(lastYearCenter, 15));
+  const anchor = addDays(new Date(), -365); // 오늘을 작년 기준으로 옮겨서
+  const windowStart = fmtDate(anchor);
+  const windowEnd = fmtDate(addDays(anchor, 30)); // 다가올 30일 이내
   const inWindow = d => d >= windowStart && d <= windowEnd;
 
   const hits = [];
@@ -1330,23 +1328,28 @@ function getHistoricalOutlook() {
       hits.push({ label: p.label, count: matchedEntries.length + matchedPests.length, dates });
     }
   });
-  hits.sort((a, b) => b.count - a.count);
-  return { targetDate: fmtDate(target), hits };
+  hits.sort((a, b) => a.dates[0].localeCompare(b.dates[0])); // 날짜 빠른 순으로 정렬해서 보기 편하게
+  return { windowStart, windowEnd, hits };
 }
 function renderOutlook() {
-  const { targetDate, hits } = getHistoricalOutlook();
-  const [, m, d] = targetDate.split('-');
-  $('task-heading').textContent = `🔮 15일 후(${m}월 ${d}일쯤) 예상되는 현상`;
+  const { windowStart, windowEnd, hits } = getHistoricalOutlook();
+  const fmtMD = s => { const [, m, d] = s.split('-'); return `${parseInt(m,10)}/${parseInt(d,10)}`; };
+  $('task-heading').textContent = `🔮 앞으로 한 달간 예상되는 현상 (작년 ${fmtMD(windowStart)}~${fmtMD(windowEnd)} 기준)`;
   if (hits.length === 0) {
-    $('task-list').innerHTML = '<div class="task-empty">작년 이맘때 기록에는 특별한 현상이 없었어요. 평년과 비슷하게 지나갈 가능성이 높아요.</div>';
+    $('task-list').innerHTML = '<div class="task-empty">작년 이맘때부터 한 달 사이 기록에는 특별한 현상이 없었어요. 평년과 비슷하게 지나갈 가능성이 높아요.</div>';
     return;
   }
-  $('task-list').innerHTML = hits.map(h => `
+  $('task-list').innerHTML = hits.map(h => {
+    const shownDates = h.dates.slice(0, 4).map(fmtMD).join(', ');
+    const moreCount = h.dates.length - 4;
+    const moreText = moreCount > 0 ? ` 외 ${moreCount}건` : '';
+    return `
     <div class="task-item">
       <span class="task-date-tag">${escapeHtml(h.label)}</span>
-      <span class="task-text">작년 ${h.dates.map(dt => dt.slice(5).replace('-', '/')).join(', ')}쯤 기록 있음 (${h.count}건)</span>
+      <span class="task-text">작년 ${shownDates}쯤 기록 있음${moreText} (총 ${h.count}건)</span>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 async function loadEntries() {
