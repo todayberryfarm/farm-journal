@@ -180,6 +180,11 @@
   .cal-cell.out { color: var(--ink-soft); opacity: 0.35; }
   .cal-cell.in { background: rgba(76,122,93,0.07); border: 1px solid var(--paper-line); color: var(--ink); }
   .cal-cell.in.today-last { border: 1.5px solid var(--leaf); font-weight: 700; }
+  .cal-cell.cal-clickable { cursor: pointer; }
+  .cal-cell.cal-clickable:active { background: rgba(76,122,93,0.18); }
+  .cal-cell.cal-clickable.cal-selected { border: 1.5px solid var(--berry); background: rgba(194,59,59,0.1); }
+  .cal-day-detail { margin-top: 0.9rem; border-top: 1px dashed var(--paper-line); padding-top: 0.8rem; }
+  .cal-day-detail-title { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--ink); }
   .cal-dots { display: flex; flex-wrap: wrap; gap: 1.5px; justify-content: center; max-width: 26px; }
   .cal-dots span { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
   .cal-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 0.8rem; justify-content: center; font-size: 0.72rem; color: var(--ink-soft); margin: 0.9rem 0 0.2rem; }
@@ -216,7 +221,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-3 (예상현상: 오늘~30일 범위로 변경, 안내문구 제거, 정렬 개선)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-4 (달력 범위를 오늘~30일로 통일, 날짜 클릭시 기록 표시)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -1036,8 +1041,8 @@ function getCalendarWindow() {
   const today = new Date();
   const anchor = new Date(today);
   anchor.setFullYear(anchor.getFullYear() - 1); // 작년 오늘
-  const start = addDays(anchor, -15);
-  const end = addDays(anchor, 15);
+  const start = anchor;
+  const end = addDays(anchor, 30); // 오늘 기준 다가올 30일 이내 (작년 기준으로 환산)
   return { start, end, startStr: fmtDate(start), endStr: fmtDate(end), todayLastYearStr: fmtDate(anchor) };
 }
 function monthsBetween(start, end) {
@@ -1063,7 +1068,8 @@ function buildMonthCalendar(year, month, win, matchesByDate) {
     const isTodayLastYear = dstr === win.todayLastYearStr;
     const dayMatches = matchesByDate[dstr] || [];
     const dots = dayMatches.map(t => `<span style="background:${CAL_COLORS[t]}"></span>`).join('');
-    cells += `<div class="cal-cell ${inWin ? 'in' : 'out'} ${isTodayLastYear ? 'today-last' : ''}">
+    const clickable = inWin ? ' cal-clickable' : '';
+    cells += `<div class="cal-cell ${inWin ? 'in' : 'out'} ${isTodayLastYear ? 'today-last' : ''}${clickable}" ${inWin ? `data-date="${dstr}"` : ''}>
       <div>${d}</div>
       <div class="cal-dots">${dots}</div>
     </div>`;
@@ -1097,7 +1103,30 @@ function renderCalendarSection() {
           <div class="cal-list-text">${escapeHtml(le.work)}</div>
         </div>
       `).join('')}</div>`;
-  $('calendar-wrap').innerHTML = calHtml + legend + listHtml;
+  $('calendar-wrap').innerHTML = calHtml + legend + listHtml + '<div class="cal-day-detail" id="cal-day-detail" style="display:none;"></div>';
+  $('calendar-wrap').querySelectorAll('.cal-cell.cal-clickable').forEach(cell => {
+    cell.addEventListener('click', () => {
+      $('calendar-wrap').querySelectorAll('.cal-cell.cal-selected').forEach(c => c.classList.remove('cal-selected'));
+      cell.classList.add('cal-selected');
+      showCalDayDetail(cell.dataset.date);
+    });
+  });
+}
+function showCalDayDetail(dateStr) {
+  const box = $('cal-day-detail');
+  const dayEntries = entries.filter(e => e.date === dateStr).sort((a,b) => a.createdAt - b.createdAt);
+  const title = `<div class="cal-day-detail-title">📌 ${fmtDay(dateStr)} 기록</div>`;
+  const body = dayEntries.length === 0
+    ? '<div class="task-empty">이 날짜엔 기록이 없어요.</div>'
+    : dayEntries.map(e => `
+        <div class="cal-list-item">
+          <div class="cal-list-date">${getTypes(e).map(t => `<span class="type-tag">${escapeHtml(t)}</span>`).join('')}</div>
+          <div class="cal-list-text">${escapeHtml(e.work)}${e.note ? `<br>📌 ${escapeHtml(e.note)}` : ''}</div>
+        </div>
+      `).join('');
+  box.innerHTML = title + body;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 function getCompareDateRanges() {
   const today = new Date();
