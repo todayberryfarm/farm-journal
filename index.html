@@ -110,6 +110,13 @@
   .temp-sum-card { flex: 1; text-align: center; border-radius: 8px; padding: 0.5rem; font-size: 0.75rem; }
   .temp-sum-card.cur { background: rgba(76,122,93,0.1); color: var(--leaf); }
   .temp-sum-card.last { background: rgba(217,164,65,0.16); color: #8a6a1f; }
+  .dday-card { flex-shrink: 0; width: 100px; background: var(--card); border: 1.5px solid var(--paper-line); border-radius: 12px; padding: 0.7rem 0.5rem; text-align: center; position: relative; }
+  .dday-card .dday-label { font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 0.15rem 0.5rem; display: inline-block; margin-bottom: 0.4rem; }
+  .dday-card .dday-num { font-family: 'Noto Sans KR', sans-serif; font-weight: 900; font-size: 1.25rem; color: var(--ink); }
+  .dday-card .dday-date { font-size: 0.68rem; color: var(--ink-soft); margin-top: 0.25rem; }
+  .dday-card .dday-del { position: absolute; top: -6px; right: -6px; background: var(--berry); color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; cursor: pointer; line-height: 1; }
+  .dday-add-card { flex-shrink: 0; width: 76px; background: var(--card); border: 1.5px dashed var(--paper-line); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: var(--leaf); font-weight: 700; font-size: 0.75rem; gap: 0.2rem; }
+  .dday-add-card span.plus { font-size: 1.3rem; }
   .temp-sum-card b { display: block; font-family: 'Noto Sans KR', sans-serif; font-size: 1.05rem; margin-top: 0.15rem; }
   .chart-detail-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   .chart-detail-table th, .chart-detail-table td { text-align: center; padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--paper-line); }
@@ -221,7 +228,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-7 (검색창과 날짜검색 버튼을 하나의 박스로 통합)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-8 (통계탭에 디데이 카드 추가: 정식·삽목·꽃대출현·화방·첫수확 + 직접추가)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -281,6 +288,12 @@
   </div>
 
   <div id="panel-compare" style="display:none;">
+    <div class="stat-section">
+      <h2>📅 디데이</h2>
+      <div class="stat-card-box" style="overflow-x:auto;">
+        <div id="dday-cards" style="display:flex; gap:0.6rem;"></div>
+      </div>
+    </div>
     <div class="stat-section">
       <h2>기온 추이 (오늘 기준 앞뒤 10일 · 내가 기록한 날씨만 표시)</h2>
       <div class="stat-card-box">
@@ -475,6 +488,24 @@
     <div class="confirm-btns">
       <button class="btn-cancel" id="pest-add-cancel">취소</button>
       <button class="btn-save" id="pest-add-save">기록 저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="dday-add-overlay">
+  <div class="confirm-card">
+    <h3>📅 디데이 추가</h3>
+    <div class="cf-row">
+      <label class="field-label">이름</label>
+      <input type="text" id="dday-add-name" placeholder="예: 첫 수확일">
+    </div>
+    <div class="cf-row">
+      <label class="field-label">기준 날짜</label>
+      <input type="date" id="dday-add-date">
+    </div>
+    <div class="confirm-btns">
+      <button class="btn-cancel" id="dday-add-cancel">취소</button>
+      <button class="btn-save" id="dday-add-save">추가</button>
     </div>
   </div>
 </div>
@@ -1085,8 +1116,88 @@ function switchTab(name) {
   $('panel-compare').style.display = isRecord ? 'none' : 'block';
   $('tab-record').classList.toggle('active', isRecord);
   $('tab-compare').classList.toggle('active', !isRecord);
-  if (!isRecord) { renderTempChart(); }
+  if (!isRecord) { renderTempChart(); renderDdayCards(); }
 }
+
+// ---------- 디데이 ----------
+const DDAY_AUTO = [
+  { label: '정식', color: '#4C7A5D', keywords: WORK_KEYWORDS['정식'] },
+  { label: '삽목', color: '#B98B4E', keywords: ['삽목'] },
+  { label: '꽃대출현', color: '#8F2A2A', keywords: ['꽃대','꽃대출현','화아분화'] },
+  { label: '1화방', color: '#6B8CAE', keywords: WORK_KEYWORDS['1화방'] },
+  { label: '2화방', color: '#8B6BAE', keywords: WORK_KEYWORDS['2화방'] },
+  { label: '3화방', color: '#B3703F', keywords: WORK_KEYWORDS['3화방'] },
+  { label: '4화방', color: '#3F9E96', keywords: WORK_KEYWORDS['4화방'] },
+  { label: '첫수확', color: '#C23B3B', keywords: ['수확','첫수확','첫 수확'] }
+];
+function getFarmSeasonStartStr() {
+  const now = new Date();
+  const y = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1; // 9월(월index8) 기준 시즌 시작
+  return fmtDate(new Date(y, 8, 1));
+}
+const DDAY_KEY = 'farm-journal-manual-dday';
+let manualDdays = [];
+async function loadManualDdays() {
+  try {
+    const res = await window.storage.get(DDAY_KEY, true);
+    manualDdays = res && res.value ? JSON.parse(res.value) : [];
+  } catch (e) { manualDdays = []; }
+}
+async function saveManualDdays() {
+  try { await window.storage.set(DDAY_KEY, JSON.stringify(manualDdays), true); } catch (e) {}
+}
+function getAutoDdayCards() {
+  const seasonStart = getFarmSeasonStartStr();
+  const todayStr = fmtDate(new Date());
+  const cards = [];
+  DDAY_AUTO.forEach(m => {
+    const matched = entries.filter(e => e.date >= seasonStart && e.date <= todayStr &&
+      (getTypes(e).includes(m.label) || m.keywords.some(k => (e.work||'').includes(k) || (e.note||'').includes(k))));
+    if (matched.length === 0) return;
+    const firstDate = matched.map(e => e.date).sort()[0];
+    const days = Math.round((new Date(todayStr) - new Date(firstDate)) / 86400000);
+    cards.push({ label: m.label, color: m.color, date: firstDate, days, manual: false });
+  });
+  return cards;
+}
+function renderDdayCards() {
+  const todayStr = fmtDate(new Date());
+  const autoCards = getAutoDdayCards();
+  const manualCards = manualDdays.map(d => ({ id: d.id, label: d.label, color: '#6B7267', date: d.date, days: Math.round((new Date(todayStr) - new Date(d.date)) / 86400000), manual: true }));
+  const all = [...autoCards, ...manualCards];
+  const cardsHtml = all.map(c => `
+    <div class="dday-card">
+      ${c.manual ? `<button type="button" class="dday-del" data-id="${c.id}">✕</button>` : ''}
+      <span class="dday-label" style="color:${c.color}; background:${c.color}22;">${escapeHtml(c.label)}</span>
+      <div class="dday-num">D+${c.days}</div>
+      <div class="dday-date">${fmtMD(c.date)}</div>
+    </div>
+  `).join('');
+  const addCardHtml = `<div class="dday-add-card" id="dday-add-btn"><span class="plus">+</span>추가</div>`;
+  $('dday-cards').innerHTML = (all.length === 0 ? '<div class="task-empty" style="white-space:nowrap;">아직 표시할 디데이가 없어요.</div>' : cardsHtml) + addCardHtml;
+  $('dday-add-btn').addEventListener('click', () => {
+    $('dday-add-name').value = '';
+    $('dday-add-date').value = todayStr;
+    $('dday-add-overlay').classList.add('show');
+  });
+  $('dday-cards').querySelectorAll('.dday-del').forEach(btn => btn.addEventListener('click', async () => {
+    manualDdays = manualDdays.filter(d => d.id !== btn.dataset.id);
+    await saveManualDdays();
+    renderDdayCards();
+  }));
+}
+$('dday-add-cancel').addEventListener('click', () => $('dday-add-overlay').classList.remove('show'));
+$('dday-add-save').addEventListener('click', async () => {
+  const name = $('dday-add-name').value.trim();
+  const date = $('dday-add-date').value;
+  if (!name || !date) { $('dday-add-name').style.borderColor = 'var(--berry)'; return; }
+  manualDdays.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), label: name, date });
+  await saveManualDdays();
+  $('dday-add-overlay').classList.remove('show');
+  $('dday-add-name').style.borderColor = '';
+  renderDdayCards();
+});
+
 $('search-input').addEventListener('input', render);
 $('search-date').addEventListener('change', render);
 $('search-date-clear-btn').addEventListener('click', () => { $('search-date').value = ''; render(); });
@@ -2513,6 +2624,7 @@ function startApp() {
   Promise.all([entriesLoadedPromise, pestLoadedPromise]).then(() => renderOutlook());
   loadVocab();
   loadCustomTypes().then(renderTypeChipsAndFilter);
+  loadManualDdays();
 }
 $('logout-btn').addEventListener('click', () => {
   if (confirm('로그아웃하시겠어요? 다시 로그인해야 해요.')) signOutOfApp();
