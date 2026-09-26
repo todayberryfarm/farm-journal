@@ -228,7 +228,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-9 (디데이 자동인식 단어 엄격화 + 수정 기능 추가)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-10 (디데이: 자동인식 카드도 수정창에서 삭제 가능)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -506,6 +506,9 @@
     <div class="confirm-btns">
       <button class="btn-cancel" id="dday-add-cancel">취소</button>
       <button class="btn-save" id="dday-add-save">추가</button>
+    </div>
+    <div style="text-align:center; margin-top:0.7rem; display:none;" id="dday-add-delete-row">
+      <button type="button" id="dday-add-delete" style="border:none; background:none; color:var(--berry); font-size:0.8rem; font-weight:700; cursor:pointer; text-decoration:underline; font-family:inherit;">이 디데이 삭제하기</button>
     </div>
   </div>
 </div>
@@ -1152,6 +1155,7 @@ function getAutoDdayCards() {
   const cards = [];
   DDAY_AUTO.forEach(m => {
     const override = manualDdays.find(d => d.overridesAuto === m.label);
+    if (override && override.hidden) return;
     if (override) {
       const days = Math.round((new Date(todayStr) - new Date(override.date)) / 86400000);
       cards.push({ label: override.label, color: m.color, date: override.date, days, manual: false, overrideId: override.id });
@@ -1186,6 +1190,7 @@ function renderDdayCards() {
     editingDdayContext = null;
     $('dday-add-name').value = '';
     $('dday-add-date').value = todayStr;
+    $('dday-add-delete-row').style.display = 'none';
     $('dday-add-overlay').classList.add('show');
   });
   $('dday-cards').querySelectorAll('.dday-del').forEach(btn => btn.addEventListener('click', async () => {
@@ -1198,18 +1203,30 @@ function renderDdayCards() {
       editingDdayContext = { autoLabel: c.autoLabel || c.label, overrideId: c.overrideId || null };
       $('dday-add-name').value = c.label;
       $('dday-add-date').value = c.date;
+      $('dday-add-delete-row').style.display = 'block';
       $('dday-add-overlay').classList.add('show');
     }
   }));
 }
 $('dday-add-cancel').addEventListener('click', () => { $('dday-add-overlay').classList.remove('show'); editingDdayContext = null; });
+$('dday-add-delete').addEventListener('click', async () => {
+  if (!editingDdayContext) return;
+  const idx = manualDdays.findIndex(d => d.id === editingDdayContext.overrideId);
+  const hiddenEntry = { id: editingDdayContext.overrideId || (Date.now().toString(36) + Math.random().toString(36).slice(2,7)), overridesAuto: editingDdayContext.autoLabel, hidden: true, label: '', date: '' };
+  if (idx !== -1) manualDdays[idx] = hiddenEntry;
+  else manualDdays.push(hiddenEntry);
+  await saveManualDdays();
+  $('dday-add-overlay').classList.remove('show');
+  editingDdayContext = null;
+  renderDdayCards();
+});
 $('dday-add-save').addEventListener('click', async () => {
   const name = $('dday-add-name').value.trim();
   const date = $('dday-add-date').value;
   if (!name || !date) { $('dday-add-name').style.borderColor = 'var(--berry)'; return; }
   if (editingDdayContext) {
     const idx = manualDdays.findIndex(d => d.id === editingDdayContext.overrideId);
-    if (idx !== -1) manualDdays[idx] = { ...manualDdays[idx], label: name, date };
+    if (idx !== -1) manualDdays[idx] = { ...manualDdays[idx], label: name, date, hidden: false };
     else manualDdays.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), label: name, date, overridesAuto: editingDdayContext.autoLabel });
   } else {
     manualDdays.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), label: name, date });
