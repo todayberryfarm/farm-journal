@@ -228,7 +228,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-8 (통계탭에 디데이 카드 추가: 정식·삽목·꽃대출현·화방·첫수확 + 직접추가)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-9 (디데이 자동인식 단어 엄격화 + 수정 기능 추가)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -1121,14 +1121,14 @@ function switchTab(name) {
 
 // ---------- 디데이 ----------
 const DDAY_AUTO = [
-  { label: '정식', color: '#4C7A5D', keywords: WORK_KEYWORDS['정식'] },
+  { label: '정식', color: '#4C7A5D', keywords: ['정식'] },
   { label: '삽목', color: '#B98B4E', keywords: ['삽목'] },
-  { label: '꽃대출현', color: '#8F2A2A', keywords: ['꽃대','꽃대출현','화아분화'] },
-  { label: '1화방', color: '#6B8CAE', keywords: WORK_KEYWORDS['1화방'] },
-  { label: '2화방', color: '#8B6BAE', keywords: WORK_KEYWORDS['2화방'] },
-  { label: '3화방', color: '#B3703F', keywords: WORK_KEYWORDS['3화방'] },
-  { label: '4화방', color: '#3F9E96', keywords: WORK_KEYWORDS['4화방'] },
-  { label: '첫수확', color: '#C23B3B', keywords: ['수확','첫수확','첫 수확'] }
+  { label: '꽃대출현', color: '#8F2A2A', keywords: ['꽃대출현'] },
+  { label: '1화방', color: '#6B8CAE', keywords: ['1화방'] },
+  { label: '2화방', color: '#8B6BAE', keywords: ['2화방'] },
+  { label: '3화방', color: '#B3703F', keywords: ['3화방'] },
+  { label: '4화방', color: '#3F9E96', keywords: ['4화방'] },
+  { label: '첫수확', color: '#C23B3B', keywords: ['첫수확','첫 수확'] }
 ];
 function getFarmSeasonStartStr() {
   const now = new Date();
@@ -1151,23 +1151,30 @@ function getAutoDdayCards() {
   const todayStr = fmtDate(new Date());
   const cards = [];
   DDAY_AUTO.forEach(m => {
+    const override = manualDdays.find(d => d.overridesAuto === m.label);
+    if (override) {
+      const days = Math.round((new Date(todayStr) - new Date(override.date)) / 86400000);
+      cards.push({ label: override.label, color: m.color, date: override.date, days, manual: false, overrideId: override.id });
+      return;
+    }
     const matched = entries.filter(e => e.date >= seasonStart && e.date <= todayStr &&
       (getTypes(e).includes(m.label) || m.keywords.some(k => (e.work||'').includes(k) || (e.note||'').includes(k))));
     if (matched.length === 0) return;
     const firstDate = matched.map(e => e.date).sort()[0];
     const days = Math.round((new Date(todayStr) - new Date(firstDate)) / 86400000);
-    cards.push({ label: m.label, color: m.color, date: firstDate, days, manual: false });
+    cards.push({ label: m.label, color: m.color, date: firstDate, days, manual: false, autoLabel: m.label });
   });
   return cards;
 }
+let editingDdayContext = null;
 function renderDdayCards() {
   const todayStr = fmtDate(new Date());
   const autoCards = getAutoDdayCards();
-  const manualCards = manualDdays.map(d => ({ id: d.id, label: d.label, color: '#6B7267', date: d.date, days: Math.round((new Date(todayStr) - new Date(d.date)) / 86400000), manual: true }));
+  const manualCards = manualDdays.filter(d => !d.overridesAuto).map(d => ({ id: d.id, label: d.label, color: '#6B7267', date: d.date, days: Math.round((new Date(todayStr) - new Date(d.date)) / 86400000), manual: true }));
   const all = [...autoCards, ...manualCards];
-  const cardsHtml = all.map(c => `
+  const cardsHtml = all.map((c, i) => `
     <div class="dday-card">
-      ${c.manual ? `<button type="button" class="dday-del" data-id="${c.id}">✕</button>` : ''}
+      <button type="button" class="dday-del" data-i="${i}" style="${c.manual ? '' : 'background:var(--leaf);'}">${c.manual ? '✕' : '✏️'}</button>
       <span class="dday-label" style="color:${c.color}; background:${c.color}22;">${escapeHtml(c.label)}</span>
       <div class="dday-num">D+${c.days}</div>
       <div class="dday-date">${fmtMD(c.date)}</div>
@@ -1176,25 +1183,41 @@ function renderDdayCards() {
   const addCardHtml = `<div class="dday-add-card" id="dday-add-btn"><span class="plus">+</span>추가</div>`;
   $('dday-cards').innerHTML = (all.length === 0 ? '<div class="task-empty" style="white-space:nowrap;">아직 표시할 디데이가 없어요.</div>' : cardsHtml) + addCardHtml;
   $('dday-add-btn').addEventListener('click', () => {
+    editingDdayContext = null;
     $('dday-add-name').value = '';
     $('dday-add-date').value = todayStr;
     $('dday-add-overlay').classList.add('show');
   });
   $('dday-cards').querySelectorAll('.dday-del').forEach(btn => btn.addEventListener('click', async () => {
-    manualDdays = manualDdays.filter(d => d.id !== btn.dataset.id);
-    await saveManualDdays();
-    renderDdayCards();
+    const c = all[parseInt(btn.dataset.i, 10)];
+    if (c.manual) {
+      manualDdays = manualDdays.filter(d => d.id !== c.id);
+      await saveManualDdays();
+      renderDdayCards();
+    } else {
+      editingDdayContext = { autoLabel: c.autoLabel || c.label, overrideId: c.overrideId || null };
+      $('dday-add-name').value = c.label;
+      $('dday-add-date').value = c.date;
+      $('dday-add-overlay').classList.add('show');
+    }
   }));
 }
-$('dday-add-cancel').addEventListener('click', () => $('dday-add-overlay').classList.remove('show'));
+$('dday-add-cancel').addEventListener('click', () => { $('dday-add-overlay').classList.remove('show'); editingDdayContext = null; });
 $('dday-add-save').addEventListener('click', async () => {
   const name = $('dday-add-name').value.trim();
   const date = $('dday-add-date').value;
   if (!name || !date) { $('dday-add-name').style.borderColor = 'var(--berry)'; return; }
-  manualDdays.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), label: name, date });
+  if (editingDdayContext) {
+    const idx = manualDdays.findIndex(d => d.id === editingDdayContext.overrideId);
+    if (idx !== -1) manualDdays[idx] = { ...manualDdays[idx], label: name, date };
+    else manualDdays.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), label: name, date, overridesAuto: editingDdayContext.autoLabel });
+  } else {
+    manualDdays.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), label: name, date });
+  }
   await saveManualDdays();
   $('dday-add-overlay').classList.remove('show');
   $('dday-add-name').style.borderColor = '';
+  editingDdayContext = null;
   renderDdayCards();
 });
 
