@@ -228,7 +228,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-10 (디데이: 자동인식 카드도 수정창에서 삭제 가능)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-11 (병해충예찰: 8-1·8-2 자리 교체, 전체 기록 추가 버튼)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -1979,7 +1979,7 @@ const PEST_ZONES = {
     { id: '1구역', label: '1구역', sub: '남동 · 모주' }
   ],
   '재배동': [
-    { id: '10', label: '10', sub: '수직재배' }, { id: '9', label: '9' }, { id: '8-1', label: '8-1' }, { id: '8-2', label: '8-2' },
+    { id: '10', label: '10', sub: '수직재배' }, { id: '9', label: '9' }, { id: '8-2', label: '8-2' }, { id: '8-1', label: '8-1' },
     { id: '__empty__', label: '', empty: true }, { id: '6', label: '6', sub: '수직재배' }, { id: '7-1', label: '7-1' }, { id: '7-2', label: '7-2' }
   ]
 };
@@ -2036,8 +2036,10 @@ function renderPestDiagram() {
       ${z.sub ? `<span class="pz-sub">${z.sub}</span>` : ''}
     </div>`;
   }).join('');
-  $('pest-diagram-wrap').innerHTML = `<div class="${gridClass}">${html}</div>`;
+  $('pest-diagram-wrap').innerHTML = `<div class="${gridClass}">${html}</div>
+    <button type="button" class="week-chart-empty-btn" id="pest-add-whole-btn" style="width:100%; margin-top:0.6rem;">🔍 ${escapeHtml(currentPestHouse)} 전체 기록 추가</button>`;
   $('pest-compass-hint').style.display = currentPestHouse === '육묘장' ? 'block' : 'none';
+  $('pest-add-whole-btn').addEventListener('click', () => openPestAddOverlay('전체', null));
   $('pest-diagram-wrap').querySelectorAll('.pest-zone:not(.empty)').forEach(el => {
     el.addEventListener('click', () => { currentPestZone = el.dataset.zone; renderPestDiagram(); renderPestHistory(); });
   });
