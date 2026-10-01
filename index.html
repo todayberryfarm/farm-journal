@@ -228,7 +228,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-13 (기록할 때마다 작업유형 목록을 새로 불러오도록 수정)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-14 (불러오기 실패 시 덮어쓰기 방지 — 데이터 유실 재발방지)</div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
@@ -1642,12 +1642,21 @@ function renderOutlook() {
   }).join('');
 }
 
+let entriesLoadOk = false;
 async function loadEntries() {
   $('status').textContent = '불러오는 중...';
   try {
     const res = await window.storage.get(STORAGE_KEY, true);
     entries = res && res.value ? JSON.parse(res.value) : [];
-  } catch (e) { entries = []; }
+    entriesLoadOk = true;
+  } catch (e) {
+    entriesLoadOk = false;
+    $('status').innerHTML = '⚠️ 기록을 불러오지 못했어요. <button type="button" id="entries-retry-btn" style="border:1.5px solid var(--berry); background:#fff; color:var(--berry); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit;">다시 불러오기</button>';
+    const retryBtn = document.getElementById('entries-retry-btn');
+    if (retryBtn) retryBtn.addEventListener('click', loadEntries);
+    showToast('❌ 기록을 불러오지 못했어요 — 새로고침하기 전엔 새 기록을 저장하지 마세요.');
+    return; // entries를 건드리지 않고 중단 (덮어쓰기 사고 방지)
+  }
   await loadWeatherMap();
   // 낮/밤 구분 없이 저장됐던 예전 자동 날씨 기록은 지우고, 낮 기준으로 다시 불러오게 해요 (직접 입력·CSV로 채운 건 그대로 유지)
   let purged = false;
@@ -1658,6 +1667,7 @@ async function loadEntries() {
   render();
 }
 async function saveEntries() {
+  if (!entriesLoadOk) { showToast('❌ 기록을 정상적으로 불러온 상태가 아니라 저장을 막았어요. 새로고침 후 다시 시도해주세요.'); return false; }
   try { const res = await window.storage.set(STORAGE_KEY, JSON.stringify(entries), true); return !!res; }
   catch (e) { return false; }
 }
