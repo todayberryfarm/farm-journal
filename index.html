@@ -228,8 +228,9 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-16 ("작년 이맘때"→"과거 이력"으로 변경, 앞뒤20일·2년치 표시)</div>
-<div id="backup-reminder-banner" style="display:none; position:sticky; top:22px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-17 (맨 위에 마지막 백업 시각 항상 표시)</div>
+<div id="backup-status-bar" style="position:sticky; top:22px; z-index:98; background:#EFE9DA; color:#6B7267; text-align:center; font-size:0.68rem; padding:0.25rem 0.6rem; letter-spacing:0.01em;"></div>
+<div id="backup-reminder-banner" style="display:none; position:sticky; top:46px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
   <button type="button" id="backup-reminder-btn" style="border:1.5px solid #24382E; background:#fff; color:#24382E; border-radius:999px; padding:0.25rem 0.8rem; font-size:0.74rem; font-weight:700; cursor:pointer; font-family:inherit;">지금 백업</button>
 </div>
@@ -2556,11 +2557,25 @@ async function autoBackupToDriveIfDue() {
     if (ok) {
       backupMeta.lastDriveBackupAt = Date.now();
       await saveBackupMeta();
+      updateBackupStatusBar();
       showToast('☁️ 구글 드라이브에 자동으로 백업했어요.');
     }
   } catch (e) {}
 }
+function fmtBackupTime(ts) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function updateBackupStatusBar() {
+  const bar = $('backup-status-bar');
+  if (!bar) return;
+  const driveStr = backupMeta.lastDriveBackupAt ? `☁️ 자동백업 ${fmtBackupTime(backupMeta.lastDriveBackupAt)}` : (localStorage.getItem(GDRIVE_CONNECTED_KEY) === '1' ? '☁️ 자동백업 대기 중' : '☁️ 자동백업 미연결');
+  const fileStr = backupMeta.lastBackupAt ? `📥 파일백업 ${fmtBackupTime(backupMeta.lastBackupAt)}` : '📥 파일백업 기록 없음';
+  bar.textContent = `${driveStr} · ${fileStr}`;
+}
 function updateBackupReminder() {
+  updateBackupStatusBar();
   const banner = $('backup-reminder-banner');
   const daysSince = backupMeta.lastBackupAt ? Math.floor((Date.now() - backupMeta.lastBackupAt) / (24*60*60*1000)) : null;
   const newSinceBackup = entries.length - (backupMeta.entriesAtLastBackup || 0);
