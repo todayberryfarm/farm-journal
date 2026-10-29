@@ -239,7 +239,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-19 (정기 할일 카드 추가: 매월 1일 기상청 자료·백엽상 물통·황)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-20 (정기 할일 관리 화면 추가: 추가·수정·삭제)</div>
 <div id="backup-status-bar" style="position:sticky; top:22px; z-index:98; background:#EFE9DA; color:#6B7267; text-align:center; font-size:0.68rem; padding:0.25rem 0.6rem; letter-spacing:0.01em;"></div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:46px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
@@ -302,7 +302,8 @@
     <button type="button" id="search-date-clear-btn" style="border:none; background:none; color:var(--ink-soft); font-size:1rem; cursor:pointer; font-family:inherit;">✕</button>
   </div>
   <div class="type-chip-group" id="filter-type-chips" style="margin-top:0.6rem; flex-wrap:nowrap; overflow-x:auto; padding-bottom:0.2rem;"></div>
-  <div style="text-align:right; margin:0.4rem 0 0.8rem;">
+  <div style="text-align:right; margin:0.4rem 0 0.8rem; display:flex; justify-content:flex-end; gap:0.9rem;">
+    <button type="button" id="recur-manage-btn" style="border:none; background:none; color:var(--leaf); font-size:0.78rem; font-weight:700; cursor:pointer; text-decoration:underline; font-family:inherit;">📋 정기 할일 관리</button>
     <button type="button" id="type-manage-btn" style="border:none; background:none; color:var(--leaf); font-size:0.78rem; font-weight:700; cursor:pointer; text-decoration:underline; font-family:inherit;">🏷️ 작업유형 관리</button>
   </div>
 
@@ -563,6 +564,26 @@
     <div class="confirm-btns">
       <button class="btn-cancel" id="wx-edit-cancel">취소</button>
       <button class="btn-save" id="wx-edit-save">수정 저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="recur-manage-overlay">
+  <div class="confirm-card">
+    <h3>📋 정기 할일 관리</h3>
+    <div class="voice-hint">매달 정해진 날짜(일)부터 기록 화면에 뜨고, 체크하면 그 달은 사라져요. 다음 달 되면 다시 떠요.</div>
+    <div id="recur-manage-list" style="margin-bottom:1rem;"></div>
+    <div class="cf-row">
+      <label class="field-label">새 할일 이름</label>
+      <input type="text" id="recur-manage-name" placeholder="예: 소독약 재고 확인">
+    </div>
+    <div class="cf-row">
+      <label class="field-label">매월 며칠부터 뜰까요? (1~28)</label>
+      <input type="number" id="recur-manage-day" min="1" max="28" value="1" inputmode="numeric">
+    </div>
+    <div class="confirm-btns">
+      <button class="btn-cancel" id="recur-manage-close">닫기</button>
+      <button class="btn-save" id="recur-manage-add">할일 추가</button>
     </div>
   </div>
 </div>
@@ -1237,6 +1258,67 @@ function renderRecurCard() {
   });
   card.style.display = 'block';
 }
+// ---------- 정기 할일 (4단계: 관리 화면) ----------
+function renderRecurManageList() {
+  if (recurTasks.length === 0) {
+    $('recur-manage-list').innerHTML = '<div class="task-empty">등록된 정기 할일이 없어요.</div>';
+    return;
+  }
+  $('recur-manage-list').innerHTML = recurTasks.map((t, i) => `
+    <div class="import-preview-row">
+      <span class="ipm">${escapeHtml(t.label)} <span style="color:var(--ink-soft);font-size:0.72rem;">(매월 ${t.day || 1}일부터)</span></span>
+      <button type="button" class="ipx recur-edit-toggle" data-i="${i}" style="color:var(--leaf);">✏️</button>
+      <button type="button" class="ipx recur-del-btn" data-i="${i}">✕</button>
+    </div>
+    <div class="recur-edit-row" id="recur-edit-row-${i}" style="display:none; padding:0.3rem 0 0.9rem;">
+      <input type="text" id="recur-edit-name-${i}" value="${escapeHtml(t.label)}" style="width:100%; margin-bottom:0.4rem; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.5rem 0.7rem; font-size:0.86rem; font-family:inherit;">
+      <input type="number" id="recur-edit-day-${i}" min="1" max="28" value="${t.day || 1}" style="width:100%; margin-bottom:0.4rem; border:1.5px solid var(--paper-line); border-radius:8px; padding:0.5rem 0.7rem; font-size:0.86rem; font-family:inherit;">
+      <button type="button" class="recur-edit-save" data-i="${i}" style="border:none; background:var(--leaf); color:#fff; border-radius:8px; padding:0.4rem 0.9rem; font-size:0.8rem; font-weight:700; cursor:pointer; font-family:inherit;">저장</button>
+    </div>
+  `).join('');
+  $('recur-manage-list').querySelectorAll('.recur-edit-toggle').forEach(btn => btn.addEventListener('click', () => {
+    const row = $('recur-edit-row-' + btn.dataset.i);
+    row.style.display = row.style.display === 'none' ? 'block' : 'none';
+  }));
+  $('recur-manage-list').querySelectorAll('.recur-edit-save').forEach(btn => btn.addEventListener('click', async () => {
+    const i = parseInt(btn.dataset.i, 10);
+    const name = $('recur-edit-name-' + i).value.trim();
+    const day = Math.min(28, Math.max(1, parseInt($('recur-edit-day-' + i).value, 10) || 1));
+    if (!name) { showToast('❌ 이름을 입력해주세요.'); return; }
+    recurTasks[i] = { ...recurTasks[i], label: name, day };
+    await saveRecurTasks();
+    renderRecurManageList();
+    renderRecurCard();
+    showToast('✅ 수정했어요.');
+  }));
+  $('recur-manage-list').querySelectorAll('.recur-del-btn').forEach(btn => btn.addEventListener('click', async () => {
+    const i = parseInt(btn.dataset.i, 10);
+    const name = recurTasks[i].label;
+    recurTasks.splice(i, 1);
+    await saveRecurTasks();
+    renderRecurManageList();
+    renderRecurCard();
+    showToast(`🗑️ "${name}" 할일을 삭제했어요.`);
+  }));
+}
+$('recur-manage-btn').addEventListener('click', () => {
+  renderRecurManageList();
+  $('recur-manage-overlay').classList.add('show');
+});
+$('recur-manage-close').addEventListener('click', () => $('recur-manage-overlay').classList.remove('show'));
+$('recur-manage-add').addEventListener('click', async () => {
+  const name = $('recur-manage-name').value.trim();
+  const day = Math.min(28, Math.max(1, parseInt($('recur-manage-day').value, 10) || 1));
+  if (!name) { $('recur-manage-name').style.borderColor = 'var(--berry)'; return; }
+  recurTasks.push({ id: 'rt-' + Date.now().toString(36) + Math.random().toString(36).slice(2,5), label: name, day });
+  await saveRecurTasks();
+  $('recur-manage-name').value = '';
+  $('recur-manage-day').value = 1;
+  $('recur-manage-name').style.borderColor = '';
+  renderRecurManageList();
+  renderRecurCard();
+  showToast(`✅ "${name}" 할일을 추가했어요.`);
+});
 $('recur-snooze-btn').addEventListener('click', () => { recurSnoozed = true; renderRecurCard(); });
 $('recur-alldone-btn').addEventListener('click', async () => {
   getPendingRecurTasks().forEach(t => { recurDone[recurPeriodKey(t.id)] = true; });
