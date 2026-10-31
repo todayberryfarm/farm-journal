@@ -239,7 +239,7 @@
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
-<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-20 (정기 할일 관리 화면 추가: 추가·수정·삭제)</div>
+<div style="position:sticky; top:0; z-index:100; background:#24382E; color:#fff; text-align:center; font-size:0.72rem; padding:0.3rem; letter-spacing:0.05em;">버전 v2026-09-13-21 (병해충 자동기록: 구역 없으면 전체로 등록 + 등록결과 안내)</div>
 <div id="backup-status-bar" style="position:sticky; top:22px; z-index:98; background:#EFE9DA; color:#6B7267; text-align:center; font-size:0.68rem; padding:0.25rem 0.6rem; letter-spacing:0.01em;"></div>
 <div id="backup-reminder-banner" style="display:none; position:sticky; top:46px; z-index:99; background:#D9A441; color:#24382E; text-align:center; font-size:0.76rem; padding:0.5rem 0.7rem; font-weight:700; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;">
   <span id="backup-reminder-text"></span>
@@ -2049,6 +2049,7 @@ $('c-save').addEventListener('click', async () => {
       await removeAutoPestRecordsFor(id);
       const created = await maybeAutoCreatePestRecord(id, date, work, note);
       if (created) pestMsg = ` · 🐛 예찰에도 자동 기록: ${created.house} ${created.zone}${created.bed ? ' · '+created.bed+'번 베드' : ''} · ${created.type}`;
+      else if (detectPestType(normalizeText(work + ' ' + note))) pestMsg = ' · ⚠️ 병해충 예찰에는 등록 안 됐어요 (육묘장/재배동도 같이 말씀해주세요)';
     } catch (e) {}
     try { await learnVocabFromText(work); } catch (e) {}
     showToast((isNew ? '✅ 일지에 기록했어요' : '✅ 수정했어요') + pestMsg);
@@ -2394,6 +2395,15 @@ $('pest-add-save').addEventListener('click', async () => {
 });
 
 // ---------- 기록 텍스트에서 병해충/구역/베드/EC/물주기 자동 인식 → 예찰에 자동 반영 ----------
+function detectPestType(t) {
+  for (const full of PEST_TYPE_CHIPS) {
+    if (full !== '기타' && t.includes(full)) return full;
+  }
+  for (const short in PEST_TYPE_ALIASES) {
+    if (t.includes(short)) return PEST_TYPE_ALIASES[short];
+  }
+  return null;
+}
 function parsePestFromText(text) {
   const t = normalizeText(text);
   let house = null;
@@ -2412,7 +2422,7 @@ function parsePestFromText(text) {
       if (re.test(t)) { zone = z; break; }
     }
   }
-  if (!zone) return null;
+  if (!zone) zone = '전체'; // 구역을 말하지 않으면 육묘장/재배동 "전체"로 등록
 
   let bed = null;
   const ordinalMap = { '첫':1,'한':1,'두':2,'세':3,'네':4,'다섯':5,'여섯':6,'일곱':7,'여덟':8 };
@@ -2422,16 +2432,9 @@ function parsePestFromText(text) {
     bm = t.match(/(첫|한|두|세|네|다섯|여섯|일곱|여덟)\s*번째\s*베드/);
     if (bm) bed = ordinalMap[bm[1]];
   }
+  if (zone === '전체') bed = null; // 전체 기록에는 베드 번호를 붙이지 않아요
 
-  let type = null;
-  for (const full of PEST_TYPE_CHIPS) {
-    if (full !== '기타' && t.includes(full)) { type = full; break; }
-  }
-  if (!type) {
-    for (const short in PEST_TYPE_ALIASES) {
-      if (t.includes(short)) { type = PEST_TYPE_ALIASES[short]; break; }
-    }
-  }
+  const type = detectPestType(t);
   if (!type) return null; // 병해충 종류를 못 찾으면 예찰 자동기록 생략
 
   let ec = null;
